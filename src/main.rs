@@ -6,7 +6,7 @@ mod handlers;
 use axum::{http::StatusCode, response::{IntoResponse, Response}, Router, routing::post};
 
 use std::net::SocketAddr;
-use tracing::{info, Level};
+use tracing::{info};
 use tracing_subscriber::FmtSubscriber;
 use std::fmt;
 use std::error::Error;
@@ -16,7 +16,7 @@ use crate::handlers::currency_handler;
 async fn main() {
     // initialize tracing
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::DEBUG)
+        .with_env_filter("exchangy=debug")
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
@@ -25,7 +25,7 @@ async fn main() {
         .route("/currency", post(currency_handler));
 
     // run our app with hyper
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     info!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

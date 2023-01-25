@@ -1,7 +1,7 @@
 use hyper::body::Buf;
 use hyper::{Client, StatusCode, Uri};
 use hyper_tls::HttpsConnector;
-use tracing::{info, error, Level, debug};
+use tracing::{info, debug};
 
 use crate::AppError;
 use crate::models::Country;

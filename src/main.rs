@@ -1,22 +1,16 @@
 mod country_repo;
 mod exchange_repo;
 mod models;
+mod handlers;
 
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::post,
-    Json, Router,
-};
+use axum::{http::StatusCode, response::{IntoResponse, Response}, Router, routing::post};
 
-use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use tracing::{info, error, Level, debug};
+use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
-use std::collections::HashMap;
 use std::fmt;
 use std::error::Error;
-use crate::models::{ConvertCurrency, ConvertResult};
+use crate::handlers::currency_handler;
 
 #[tokio::main]
 async fn main() {
@@ -26,13 +20,11 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    // build our application with a route
+    // build our application with routes
     let app = Router::new()
-        // `POST /users` goes to `create_user`
         .route("/currency", post(currency_handler));
 
     // run our app with hyper
-    // `axum::Server` is a re-export of `hyper::Server`
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     info!("listening on {}", addr);
     axum::Server::bind(&addr)
@@ -41,29 +33,8 @@ async fn main() {
         .unwrap();
 }
 
-async fn currency_handler(
-    Json(payload): Json<ConvertCurrency>,
- ) -> Result<Json<ConvertResult>, AppError> {
-    let from = payload.from;
-    let to = payload.to;
-
-    let from_currency = country_repo::get_by_name(&from).await?;
-    let to_currency = country_repo::get_by_name(&to).await?;
-    info!("from_currency={from_currency}, to_currency={to_currency}");
-
-    let converted_amount = exchange_repo::convert_amount(from_currency, to_currency, &payload.amount).await?;
-
-    let response = ConvertResult {
-        from: from,
-        to: to,
-        amount: converted_amount,
-    };
-
-    Ok(response.into())
-}
-
 #[derive(Debug)]
-struct AppError{
+pub struct AppError{
     details: String
 }
 

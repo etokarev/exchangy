@@ -1,4 +1,7 @@
+mod country_repo;
+
 use axum::{
+    extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -15,8 +18,11 @@ use tracing_subscriber::FmtSubscriber;
 use std::collections::HashMap;
 use std::fmt;
 use std::error::Error;
+use std::sync::Arc;
 // A simple type alias so as to DRY.
 // type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+
+use country_repo::{DynCountryRepo, ExampleCountryRepo};
 
 #[tokio::main]
 async fn main() {
@@ -26,11 +32,13 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
+    let country_repo = Arc::new(ExampleCountryRepo) as DynCountryRepo;
 
     // build our application with a route
     let app = Router::new()
         // `POST /users` goes to `create_user`
-        .route("/currency", post(convert_currency));
+        .route("/currency", post(currency_handler))
+        .with_state(country_repo);
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
@@ -42,16 +50,15 @@ async fn main() {
         .unwrap();
 }
 
-async fn convert_currency(
-    // this argument tells axum to parse the request body
-    // as JSON into a `CreateUser` type
+async fn currency_handler(
+    State(country_repo): State<DynCountryRepo>,
     Json(payload): Json<ConvertCurrency>,
  ) -> Result<Json<ConvertResult>, AppError> {
     let from = payload.from;
     let to = payload.to;
 
-    let from_currency = fetch_country(&from).await?;
-    let to_currency = fetch_country(&to).await?;
+    let from_currency = country_repo.get_by_name(&from).await?;
+    let to_currency = country_repo.get_by_name(&to).await?;
     info!("from_currency={from_currency}, to_currency={to_currency}");
 
     let converted_amount = convert(from_currency, to_currency, &payload.amount).await?;
@@ -113,42 +120,6 @@ struct ConvertResult {
     from: String,
     to: String,
     amount: f32
-}
-
-async fn fetch_country(name: &String) -> Result<String, AppError> {
-    let url: Uri = format!("https://restcountries.com/v3.1/name/{name}?fields=name,currencies").parse().unwrap();
-    info!("fetch_country called with name={name}");
-
-    debug!("fetch_country url={}", url.to_string());
-    let https = HttpsConnector::new();
-    let client = Client::builder().build::<_, hyper::Body>(https);
-    // Fetch the url...
-    let res = client.get(url).
-        await.map_err(|_| AppError::new("http response error"))?;
-
-    if res.status() != StatusCode::OK {
-        return Err(AppError::new(&format!("bad country name: {name}").to_string()))
-    }
-
-    // asynchronously aggregate the chunks of the body
-    let body = hyper::body::aggregate(res).
-        await.map_err(|_| AppError::new("reading buffer error"))?;
-
-    // try to parse as json with serde_json
-    let counties: Vec<Country> = serde_json::from_reader(body.reader()).
-        map_err(|_| AppError::new("json deserialization error"))?;
-    info!("fetched result with {} items", counties.len());
-
-    match counties.len() {
-        1 => {
-            match counties[0].currencies.keys().next() {
-                Some(key) => Ok(key.to_string()),
-                None => Err(AppError::new(&format!("no currency for country {name}").to_string()))
-            }
-        }
-        0 => Err(AppError::new(&format!("could not fetch country {name}").to_string())),
-        _ => Err(AppError::new("unexpected result when fetching country {name}"))
-    }
 }
 
 async fn convert(from: String, to: String, amount: &f32) -> Result<f32, AppError> {

@@ -1,4 +1,5 @@
 mod country_repo;
+mod exchange_repo;
 
 use axum::{
     extract::State,
@@ -19,10 +20,9 @@ use std::collections::HashMap;
 use std::fmt;
 use std::error::Error;
 use std::sync::Arc;
-// A simple type alias so as to DRY.
-// type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 use country_repo::{DynCountryRepo, ExampleCountryRepo};
+use crate::exchange_repo::{DynExchangeRepo, ExampleExchangeRepo};
 
 #[tokio::main]
 async fn main() {
@@ -33,12 +33,14 @@ async fn main() {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let country_repo = Arc::new(ExampleCountryRepo) as DynCountryRepo;
+    let exchange_repo = Arc::new(ExampleExchangeRepo) as DynExchangeRepo;
 
     // build our application with a route
     let app = Router::new()
         // `POST /users` goes to `create_user`
         .route("/currency", post(currency_handler))
-        .with_state(country_repo);
+        .with_state(country_repo)
+        .with_state(exchange_repo);
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
@@ -52,6 +54,7 @@ async fn main() {
 
 async fn currency_handler(
     State(country_repo): State<DynCountryRepo>,
+    State(exchange_repo): State<DynExchangeRepo>,
     Json(payload): Json<ConvertCurrency>,
  ) -> Result<Json<ConvertResult>, AppError> {
     let from = payload.from;
@@ -61,7 +64,7 @@ async fn currency_handler(
     let to_currency = country_repo.get_by_name(&to).await?;
     info!("from_currency={from_currency}, to_currency={to_currency}");
 
-    let converted_amount = convert(from_currency, to_currency, &payload.amount).await?;
+    let converted_amount = exchange_repo.convert(from_currency, to_currency, &payload.amount).await?;
 
     let response = ConvertResult {
         from: from,
@@ -120,33 +123,6 @@ struct ConvertResult {
     from: String,
     to: String,
     amount: f32
-}
-
-async fn convert(from: String, to: String, amount: &f32) -> Result<f32, AppError> {
-    let url: Uri = format!("https://v6.exchangerate-api.com/v6/615900b74ad7d5dec68b5f0f/pair/{from}/{to}/{amount}").parse().unwrap();
-    debug!("convert url={}", url.to_string());
-
-
-    let https = HttpsConnector::new();
-    let client = Client::builder().build::<_, hyper::Body>(https);
-    // Fetch the url...
-    let res = client.get(url).
-        await.map_err(|_| AppError::new("http response error"))?;
-
-    if res.status() != StatusCode::OK {
-        return Err(AppError::new(&format!("Exchangerate-api returned {} http code", res.status())))
-    }
-
-    let body = hyper::body::aggregate(res).
-        await.map_err(|_| AppError::new("reading buffer error"))?;
-
-    // try to parse as json with serde_json
-    let result: ExchangeResult = serde_json::from_reader(body.reader()).
-        map_err(|_| AppError::new("json deserialization error"))?;
-    debug!("fetched result {}", result.conversion_result);
-
-
-    Ok(result.conversion_result)
 }
 
 #[derive(Deserialize, Debug)]

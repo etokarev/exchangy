@@ -9,7 +9,9 @@ use crate::AppError;
 use crate::models::Country;
 
 pub async fn get_by_name(name: &String, country_map: Arc<DashMap<String, String>>) -> Result<String, AppError> {
-    let url: Uri = format!("https://restcountries.com/v3.1/name/{name}?fields=name,currencies").parse().unwrap();
+    let name = name.trim();
+    let url: Uri = format!("https://restcountries.com/v3.1/name/{name}?fields=name,currencies").parse().
+        map_err(|_| AppError::new("URL parsing error"))?;
 
     if let Some(v) = country_map.get(name) {
         debug!("cache hit for {name}, value: {}", v.to_string());

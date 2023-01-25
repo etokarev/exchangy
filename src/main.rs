@@ -22,8 +22,8 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let map: Arc<DashMap<String, String>> = Arc::new(DashMap::new());
-    let shared_state = Arc::new(AppState { country_map: map.clone() });
+    let country_map: Arc<DashMap<String, String>> = Arc::new(DashMap::new());
+    let shared_state = Arc::new(AppState { country_map: country_map.clone() });
     // build our application with routes
     let app = Router::new()
         .route("/currency", post(currency_handler))

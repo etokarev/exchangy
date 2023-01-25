@@ -7,7 +7,8 @@ use crate::AppError;
 use crate::models::ExchangeResult;
 
 pub async fn convert_amount(from: &String, to: &String, amount: &f32) -> Result<f32, AppError> {
-    let url: Uri = format!("https://v6.exchangerate-api.com/v6/615900b74ad7d5dec68b5f0f/pair/{from}/{to}/{amount}").parse().unwrap();
+    let url: Uri = format!("https://v6.exchangerate-api.com/v6/615900b74ad7d5dec68b5f0f/pair/{from}/{to}/{amount}").
+        parse().map_err(|_| AppError::new("URL parsing error"))?;
     debug!("convert url={}", url.to_string());
 
 

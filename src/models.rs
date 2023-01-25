@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-// the input to our `create_user` handler
+// the input to `currency_handler` handler
 #[derive(Deserialize)]
 pub struct ConvertCurrency {
     pub from: String,
@@ -9,7 +9,7 @@ pub struct ConvertCurrency {
     pub amount: f32
 }
 
-// the output to our `create_user` handler
+// the output to `currency_handler` handler
 #[derive(Serialize)]
 pub struct ConvertResult {
     pub from: String,
@@ -17,6 +17,7 @@ pub struct ConvertResult {
     pub amount: f32
 }
 
+// the output of RestCountry API call
 #[derive(Deserialize, Debug)]
 pub struct Country {
     pub name: Name,
@@ -34,7 +35,7 @@ pub struct Currency {
     pub symbol: String
 }
 
-
+// the output of ExchangeRate API call
 #[derive(Deserialize, Debug)]
 pub struct ExchangeResult {
     pub base_code: String,

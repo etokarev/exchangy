@@ -1,5 +1,6 @@
 mod country_repo;
 mod exchange_repo;
+mod models;
 
 use axum::{
     http::StatusCode,
@@ -15,6 +16,7 @@ use tracing_subscriber::FmtSubscriber;
 use std::collections::HashMap;
 use std::fmt;
 use std::error::Error;
+use crate::models::{ConvertCurrency, ConvertResult};
 
 #[tokio::main]
 async fn main() {
@@ -92,46 +94,4 @@ impl IntoResponse for AppError {
             format!("Something went wrong: {}", self.details),
         ).into_response()
     }
-}
-
-// the input to our `create_user` handler
-#[derive(Deserialize)]
-struct ConvertCurrency {
-    to: String,
-    from: String,
-    amount: f32
-}
-
-// the output to our `create_user` handler
-#[derive(Serialize)]
-struct ConvertResult {
-    from: String,
-    to: String,
-    amount: f32
-}
-
-#[derive(Deserialize, Debug)]
-struct Country {
-    name: Name,
-    currencies: HashMap<String, Currency>
-}
-
-#[derive(Deserialize, Debug)]
-struct Name {
-    common: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct Currency {
-    name: String,
-    symbol: String
-}
-
-
-#[derive(Deserialize, Debug)]
-struct ExchangeResult {
-    base_code: String,
-    target_code: String,
-    conversion_rate: f32,
-    conversion_result: f32
 }

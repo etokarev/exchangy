@@ -3,8 +3,8 @@ use hyper::{Client, StatusCode, Uri};
 use hyper_tls::HttpsConnector;
 use tracing::{info, error, Level, debug};
 
-use crate::{AppError, Country};
-
+use crate::AppError;
+use crate::models::Country;
 
 pub async fn get_by_name(name: &String) -> Result<String, AppError> {
     let url: Uri = format!("https://restcountries.com/v3.1/name/{name}?fields=name,currencies").parse().unwrap();

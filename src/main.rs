@@ -2,16 +2,12 @@ mod country_repo;
 mod exchange_repo;
 
 use axum::{
-    extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::post,
     Json, Router,
 };
 
-use hyper::body::Buf;
-use hyper::{Client, Uri};
-use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tracing::{info, error, Level, debug};
@@ -19,10 +15,6 @@ use tracing_subscriber::FmtSubscriber;
 use std::collections::HashMap;
 use std::fmt;
 use std::error::Error;
-use std::sync::Arc;
-
-use country_repo::{DynCountryRepo, ExampleCountryRepo};
-use crate::exchange_repo::{DynExchangeRepo, ExampleExchangeRepo};
 
 #[tokio::main]
 async fn main() {
@@ -32,15 +24,10 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let country_repo = Arc::new(ExampleCountryRepo) as DynCountryRepo;
-    let exchange_repo = Arc::new(ExampleExchangeRepo) as DynExchangeRepo;
-
     // build our application with a route
     let app = Router::new()
         // `POST /users` goes to `create_user`
-        .route("/currency", post(currency_handler))
-        .with_state(country_repo)
-        .with_state(exchange_repo);
+        .route("/currency", post(currency_handler));
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
@@ -53,18 +40,16 @@ async fn main() {
 }
 
 async fn currency_handler(
-    State(country_repo): State<DynCountryRepo>,
-    State(exchange_repo): State<DynExchangeRepo>,
     Json(payload): Json<ConvertCurrency>,
  ) -> Result<Json<ConvertResult>, AppError> {
     let from = payload.from;
     let to = payload.to;
 
-    let from_currency = country_repo.get_by_name(&from).await?;
-    let to_currency = country_repo.get_by_name(&to).await?;
+    let from_currency = country_repo::get_by_name(&from).await?;
+    let to_currency = country_repo::get_by_name(&to).await?;
     info!("from_currency={from_currency}, to_currency={to_currency}");
 
-    let converted_amount = exchange_repo.convert(from_currency, to_currency, &payload.amount).await?;
+    let converted_amount = exchange_repo::convert_amount(from_currency, to_currency, &payload.amount).await?;
 
     let response = ConvertResult {
         from: from,

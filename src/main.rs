@@ -10,6 +10,8 @@ use tracing::{info};
 use tracing_subscriber::FmtSubscriber;
 use std::fmt;
 use std::error::Error;
+use std::sync::Arc;
+use dashmap::DashMap;
 use crate::handlers::currency_handler;
 
 #[tokio::main]
@@ -20,9 +22,12 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
+    let map: Arc<DashMap<String, String>> = Arc::new(DashMap::new());
+    let shared_state = Arc::new(AppState { country_map: map.clone() });
     // build our application with routes
     let app = Router::new()
-        .route("/currency", post(currency_handler));
+        .route("/currency", post(currency_handler))
+        .with_state(shared_state);
 
     // run our app with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
@@ -65,4 +70,9 @@ impl IntoResponse for AppError {
             format!("Something went wrong: {}", self.details),
         ).into_response()
     }
+}
+
+#[derive(Clone)]
+pub struct AppState {
+    pub country_map: Arc<DashMap<String, String>>,
 }

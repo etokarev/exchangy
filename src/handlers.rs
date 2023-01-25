@@ -1,15 +1,18 @@
+use std::sync::Arc;
 use std::time::Duration;
+use axum::extract::State;
 use axum::Json;
 use tokio::time::sleep;
 use tracing::{debug};
-use crate::{AppError, country_repo, exchange_repo};
+use crate::{AppError, AppState, country_repo, exchange_repo};
 use crate::models::{ConvertCurrency, ConvertResult};
 
 pub async fn currency_handler(
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<ConvertCurrency>,
 ) -> Result<Json<ConvertResult>, AppError> {
-    let from_currency = country_repo::get_by_name(&payload.from).await?;
-    let to_currency = country_repo::get_by_name(&payload.to).await?;
+    let from_currency = country_repo::get_by_name(&payload.from, state.country_map.clone()).await?;
+    let to_currency = country_repo::get_by_name(&payload.to, state.country_map.clone()).await?;
     debug!("from_currency={from_currency}, to_currency={to_currency}");
 
     if to_currency == "RUB" {

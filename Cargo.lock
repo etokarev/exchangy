@@ -3,12 +3,6 @@
 version = 3
 
 [[package]]
-name = "anyhow"
-version = "1.0.68"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cb2f989d18dd141ab8ae82f64d1a8cdd37e0840f73a406896cf5e99502fab61"
-
-[[package]]
 name = "async-trait"
 version = "0.1.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -116,11 +110,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
+name = "dashmap"
+version = "5.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "907076dfda823b0b36d2a1bb5f90c96660a5bbcd7729e10727f07858f22c4edc"
+dependencies = [
+ "cfg-if",
+ "hashbrown",
+ "lock_api",
+ "once_cell",
+ "parking_lot_core",
+]
+
+[[package]]
 name = "exchangy"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "axum",
+ "dashmap",
  "hyper",
  "hyper-tls",
  "serde",

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+use dashmap::DashMap;
 use hyper::body::Buf;
 use hyper::{Client, StatusCode, Uri};
 use hyper_tls::HttpsConnector;
@@ -6,9 +8,13 @@ use tracing::{info, debug};
 use crate::AppError;
 use crate::models::Country;
 
-pub async fn get_by_name(name: &String) -> Result<String, AppError> {
+pub async fn get_by_name(name: &String, country_map: Arc<DashMap<String, String>>) -> Result<String, AppError> {
     let url: Uri = format!("https://restcountries.com/v3.1/name/{name}?fields=name,currencies").parse().unwrap();
-    debug!("fetch_country url={}", url.to_string());
+
+    if let Some(v) = country_map.get(name) {
+        debug!("cache hit for {name}, value: {}", v.to_string());
+        return Ok(v.to_string());
+    }
 
     let https = HttpsConnector::new();
     let client = Client::builder().build::<_, hyper::Body>(https);
@@ -27,12 +33,16 @@ pub async fn get_by_name(name: &String) -> Result<String, AppError> {
     // try to parse as json with serde_json
     let counties: Vec<Country> = serde_json::from_reader(body.reader()).
         map_err(|_| AppError::new("json deserialization error"))?;
-    info!("fetched result with {} items", counties.len());
+    debug!("fetched result with {} items", counties.len());
 
     match counties.len() {
         1 => {
             match counties[0].currencies.keys().next() {
-                Some(key) => Ok(key.to_string()),
+                Some(key) => {
+                    debug!("cache miss for {name}, value: {}", key.to_string());
+                    country_map.insert(name.to_string(), key.to_string());
+                    return Ok(key.to_string())
+                },
                 None => Err(AppError::new(&format!("no currency for country {name}").to_string()))
             }
         }

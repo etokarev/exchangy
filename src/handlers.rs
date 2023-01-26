@@ -24,8 +24,8 @@ pub async fn currency_handler(
     let converted_amount = exchange_repo::convert_amount(&from_currency, &to_currency, &payload.amount).await?;
 
     let response = ConvertResult {
-        from: payload.from,
-        to: payload.to,
+        from: from_currency,
+        to: to_currency,
         amount: converted_amount,
     };
 

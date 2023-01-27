@@ -3,7 +3,7 @@ use dashmap::DashMap;
 use hyper::body::Buf;
 use hyper::{Client, StatusCode, Uri};
 use hyper_tls::HttpsConnector;
-use tracing::{info, debug};
+use tracing::{debug};
 
 use crate::AppError;
 use crate::models::Country;
